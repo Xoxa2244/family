@@ -112,13 +112,16 @@ export default function TodayPage() {
       const instance = moveModal.instance;
       const newMoveCount = instance.moveCount + 1;
       
+      // Вычисляем дату завтра актуально на момент переноса
+      const tomorrowDate = dayjs().add(1, 'day').format('YYYY-MM-DD');
+      
       // Создаём новый инстанс на завтра с увеличенным moveCount
       // Это позволяет отличить перенесенные задачи от обычных
       const newInstance: TaskInstance = {
         id: crypto.randomUUID(),
         userId: instance.userId,
         templateId: instance.templateId,
-        date: tomorrow,
+        date: tomorrowDate,
         status: 'pending',
         moveCount: newMoveCount, // Наследуем увеличенный счетчик переносов
       };
