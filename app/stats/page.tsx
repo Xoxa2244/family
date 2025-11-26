@@ -346,94 +346,115 @@ function TaskStatsForUser({ userId, monthStart, monthEnd }: { userId: string; mo
   const maxDone = Math.max(...taskStats.map(s => s.totalDone), 1);
   const maxRate = Math.max(...taskStats.map(s => s.completionRate), 1);
 
+  // Функция для вычисления цвета на основе процента выполнения
+  // От красного (0%) к зеленому (100%)
+  const getColorByRate = (rate: number): string => {
+    // Нормализуем процент от 0 до 1
+    const normalized = Math.max(0, Math.min(100, rate)) / 100;
+    
+    // Используем более плавный переход через квадратичную функцию для лучшей визуализации
+    const smoothNormalized = normalized * normalized;
+    
+    // Красный компонент: уменьшается от 239 (0xEF) до 16 (0x10)
+    // При 0%: rgb(239, 68, 68) - красный
+    // При 100%: rgb(16, 185, 33) - зеленый
+    const red = Math.round(239 - (239 - 16) * smoothNormalized);
+    const green = Math.round(68 + (185 - 68) * smoothNormalized);
+    const blue = Math.round(68 - (68 - 33) * smoothNormalized);
+    
+    return `rgb(${red}, ${green}, ${blue})`;
+  };
+
   return (
     <div>
-      {taskStats.map((stat, index) => (
-        <div
-          key={stat.template.id}
-          style={{
-            marginBottom: '1rem',
-            padding: '1rem',
-            border: '1px solid #e5e7eb',
-            borderRadius: '4px',
-            background: '#f9fafb'
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '0.5rem'
-          }}>
-            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-              {stat.template.title}
-            </div>
-            <div style={{ fontSize: '0.9rem', color: '#666' }}>
-              {stat.totalDone} / {stat.totalRequired}
-            </div>
-          </div>
-
-          {/* Горизонтальные столбики */}
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            {/* Относительный процент */}
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <div style={{
-                height: '24px',
-                background: '#e5e7eb',
-                borderRadius: '4px',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  height: '100%',
-                  width: `${(stat.completionRate / maxRate) * 100}%`,
-                  background: stat.completionRate >= 80 ? '#10b981' :
-                    stat.completionRate >= 50 ? '#f59e0b' : '#ef4444',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingRight: '0.5rem',
-                  color: 'white',
-                  fontSize: '0.85rem',
-                  fontWeight: 'bold'
-                }}>
-                  {stat.completionRate > 5 && `${stat.completionRate.toFixed(0)}%`}
-                </div>
+      {taskStats.map((stat, index) => {
+        const barColor = getColorByRate(stat.completionRate);
+        return (
+          <div
+            key={stat.template.id}
+            style={{
+              marginBottom: '1rem',
+              padding: '1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '4px',
+              background: '#f9fafb'
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '0.5rem'
+            }}>
+              <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                {stat.template.title}
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#666' }}>
+                {stat.totalDone} / {stat.totalRequired}
               </div>
             </div>
 
-            {/* Абсолютное количество */}
-            <div style={{ minWidth: '100px', textAlign: 'right' }}>
-              <div style={{
-                height: '24px',
-                background: '#e5e7eb',
-                borderRadius: '4px',
-                position: 'relative',
-                overflow: 'hidden',
-                width: '100px',
-                display: 'inline-block'
-              }}>
+            {/* Горизонтальные столбики */}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              {/* Относительный процент */}
+              <div style={{ flex: 1, minWidth: '200px' }}>
                 <div style={{
-                  height: '100%',
-                  width: `${(stat.totalDone / maxDone) * 100}%`,
-                  background: '#667eea',
+                  height: '24px',
+                  background: '#e5e7eb',
                   borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingRight: '0.5rem',
-                  color: 'white',
-                  fontSize: '0.85rem',
-                  fontWeight: 'bold'
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}>
-                  {stat.totalDone > 0 && stat.totalDone}
+                  <div style={{
+                    height: '100%',
+                    width: `${(stat.completionRate / maxRate) * 100}%`,
+                    background: barColor,
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: '0.5rem',
+                    color: 'white',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {stat.completionRate > 5 && `${stat.completionRate.toFixed(0)}%`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Абсолютное количество */}
+              <div style={{ minWidth: '100px', textAlign: 'right' }}>
+                <div style={{
+                  height: '24px',
+                  background: '#e5e7eb',
+                  borderRadius: '4px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  width: '100px',
+                  display: 'inline-block'
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${(stat.totalDone / maxDone) * 100}%`,
+                    background: '#667eea',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: '0.5rem',
+                    color: 'white',
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {stat.totalDone > 0 && stat.totalDone}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
