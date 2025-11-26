@@ -12,6 +12,7 @@ export default function TodayPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ instanceId: string; condition: string } | null>(null);
+  const [moveModal, setMoveModal] = useState<{ instance: TaskInstance } | null>(null);
 
   const currentUser = state.users.find(u => u.id === state.currentUserId);
   const today = dayjs().format('YYYY-MM-DD');
@@ -100,31 +101,43 @@ export default function TodayPage() {
     setConfirmModal(null);
   };
 
-  const handleMoveToTomorrow = (instance: TaskInstance) => {
-    // Обновляем текущий инстанс
-    updateState(prev => ({
-      ...prev,
-      taskInstances: prev.taskInstances.map(t =>
-        t.id === instance.id
-          ? { ...t, status: 'moved' as TaskStatus, moveCount: t.moveCount + 1 }
-          : t
-      ),
-    }));
+  const handleMoveToTomorrowClick = (instance: TaskInstance) => {
+    setMoveModal({ instance });
+  };
 
-    // Создаём новый инстанс на завтра
-    const newInstance: TaskInstance = {
-      id: crypto.randomUUID(),
-      userId: instance.userId,
-      templateId: instance.templateId,
-      date: tomorrow,
-      status: 'pending',
-      moveCount: instance.moveCount,
-    };
+  const handleConfirmMove = (confirmed: boolean) => {
+    if (!moveModal) return;
+    
+    if (confirmed) {
+      const instance = moveModal.instance;
+      
+      // Обновляем текущий инстанс
+      updateState(prev => ({
+        ...prev,
+        taskInstances: prev.taskInstances.map(t =>
+          t.id === instance.id
+            ? { ...t, status: 'moved' as TaskStatus, moveCount: t.moveCount + 1 }
+            : t
+        ),
+      }));
 
-    updateState(prev => ({
-      ...prev,
-      taskInstances: [...prev.taskInstances, newInstance],
-    }));
+      // Создаём новый инстанс на завтра
+      const newInstance: TaskInstance = {
+        id: crypto.randomUUID(),
+        userId: instance.userId,
+        templateId: instance.templateId,
+        date: tomorrow,
+        status: 'pending',
+        moveCount: instance.moveCount,
+      };
+
+      updateState(prev => ({
+        ...prev,
+        taskInstances: [...prev.taskInstances, newInstance],
+      }));
+    }
+    
+    setMoveModal(null);
   };
 
   const getTaskTitle = (templateId: string) => {
@@ -252,7 +265,7 @@ export default function TodayPage() {
                     </div>
                     <div style={{ fontSize: '0.9rem', color: '#666' }}>
                       {isDone && '✅ Выполнено'}
-                      {isMoved && '⏭️ Перенесено'}
+                      {isMoved && '➡️ Перенесено'}
                       {instance.status === 'pending' && '⏳ В процессе'}
                       {instance.moveCount > 0 && ` (переносов: ${instance.moveCount})`}
                     </div>
@@ -274,7 +287,7 @@ export default function TodayPage() {
                         Сделано
                       </button>
                       <button
-                        onClick={() => handleMoveToTomorrow(instance)}
+                        onClick={() => handleMoveToTomorrowClick(instance)}
                         style={{
                           padding: '0.5rem 1rem',
                           background: '#f59e0b',
@@ -307,7 +320,7 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* Модальное окно подтверждения */}
+      {/* Модальное окно подтверждения выполнения */}
       {confirmModal && (
         <div style={{
           position: 'fixed',
@@ -370,6 +383,72 @@ export default function TodayPage() {
                 }}
               >
                 Не совсем. Еще поделаю
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно подтверждения переноса */}
+      {moveModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}
+        onClick={() => setMoveModal(null)}
+        >
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', color: '#333' }}>
+              Перенести "{getTaskTitle(moveModal.instance.templateId)}" на завтра?
+            </h2>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => handleConfirmMove(true)}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Да, перенести
+              </button>
+              <button
+                onClick={() => handleConfirmMove(false)}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Отмена
               </button>
             </div>
           </div>
