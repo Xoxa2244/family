@@ -110,15 +110,17 @@ export default function TodayPage() {
     
     if (confirmed) {
       const instance = moveModal.instance;
+      const newMoveCount = instance.moveCount + 1;
       
-      // Создаём новый инстанс на завтра
+      // Создаём новый инстанс на завтра с увеличенным moveCount
+      // Это позволяет отличить перенесенные задачи от обычных
       const newInstance: TaskInstance = {
         id: crypto.randomUUID(),
         userId: instance.userId,
         templateId: instance.templateId,
         date: tomorrow,
         status: 'pending',
-        moveCount: instance.moveCount,
+        moveCount: newMoveCount, // Наследуем увеличенный счетчик переносов
       };
 
       // Обновляем текущий инстанс и добавляем новый в одном обновлении
@@ -127,7 +129,7 @@ export default function TodayPage() {
         taskInstances: [
           ...prev.taskInstances.map(t =>
             t.id === instance.id
-              ? { ...t, status: 'moved' as TaskStatus, moveCount: t.moveCount + 1 }
+              ? { ...t, status: 'moved' as TaskStatus, moveCount: newMoveCount }
               : t
           ),
           newInstance,

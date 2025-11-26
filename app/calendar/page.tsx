@@ -227,13 +227,29 @@ export default function CalendarPage() {
 
             // Рендерим слоты для задач
             const renderSlots = () => {
-              if (dayInfo.required === 0) {
+              if (dayInfo.isBeforeHistory) {
                 return null;
               }
 
               const slots = [];
-              // Сортируем инстансы: сначала выполненные, потом pending, потом moved
-              const sortedInstances = [...dayInstances].sort((a, b) => {
+              
+              // Разделяем инстансы на обычные (в рамках квоты) и перенесенные (сверх квоты)
+              // Перенесенные - это те, у которых moveCount > 0 (они были перенесены с предыдущего дня)
+              const regularInstances: typeof dayInstances = [];
+              const movedInstances: typeof dayInstances = [];
+              
+              dayInstances.forEach(instance => {
+                // Если инстанс имеет moveCount > 0, это перенесенная задача (сверх квоты)
+                // Остальные - обычные задачи (в рамках квоты)
+                if (instance.moveCount > 0) {
+                  movedInstances.push(instance);
+                } else {
+                  regularInstances.push(instance);
+                }
+              });
+
+              // Сортируем обычные инстансы: сначала выполненные, потом pending, потом moved
+              const sortedRegularInstances = [...regularInstances].sort((a, b) => {
                 if (a.status === 'done' && b.status !== 'done') return -1;
                 if (a.status !== 'done' && b.status === 'done') return 1;
                 if (a.status === 'pending' && b.status === 'moved') return -1;
@@ -241,16 +257,17 @@ export default function CalendarPage() {
                 return 0;
               });
 
+              // Рендерим слоты по квоте
               for (let i = 0; i < dayInfo.required; i++) {
-                const instance = sortedInstances[i];
+                const instance = sortedRegularInstances[i];
                 let slotStatus: 'done' | 'pending' | 'moved' | 'empty' | 'failed' = 'empty';
                 let taskTitle = '';
 
                 if (instance) {
                   slotStatus = instance.status;
                   taskTitle = getTaskTitle(instance.templateId);
-                } else if (dayInfo.isPast && !dayInfo.isBeforeHistory) {
-                  // Если день прошел и слот не заполнен И это после начала истории - красный крестик
+                } else if (dayInfo.isPast) {
+                  // Если день прошел и слот не заполнен - красный крестик
                   slotStatus = 'failed';
                 }
 
@@ -262,7 +279,7 @@ export default function CalendarPage() {
 
                 slots.push(
                   <div
-                    key={i}
+                    key={`slot-${i}`}
                     style={{
                       marginBottom: '0.25rem',
                       padding: '0.25rem',
@@ -288,7 +305,35 @@ export default function CalendarPage() {
                   </div>
                 );
               }
-              return slots;
+
+              // Рендерим перенесенные задачи сверх квоты
+              movedInstances.forEach((instance, index) => {
+                const taskTitle = getTaskTitle(instance.templateId);
+                slots.push(
+                  <div
+                    key={`moved-${instance.id}`}
+                    style={{
+                      marginBottom: '0.25rem',
+                      padding: '0.25rem',
+                      background: '#fef3c7',
+                      borderRadius: '2px',
+                      fontSize: '0.7rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      border: '1px dashed #f59e0b'
+                    }}
+                  >
+                    <span>{taskTitle}:</span>
+                    <span>⏳</span>
+                    <span style={{ fontSize: '0.65rem', color: '#92400e', marginLeft: 'auto' }}>
+                      (перенесено)
+                    </span>
+                  </div>
+                );
+              });
+
+              return slots.length > 0 ? slots : null;
             };
 
             return (
@@ -311,13 +356,17 @@ export default function CalendarPage() {
                 }}>
                   {day}
                 </div>
-                {dayInfo.required > 0 && (
+                {!dayInfo.isBeforeHistory && dayInfo.required > 0 && (
                   <div style={{ 
                     fontSize: '0.75rem', 
                     marginBottom: '0.5rem', 
-                    color: dayInfo.isBeforeHistory ? '#999' : '#666' 
+                    color: '#666' 
                   }}>
                     {dayInfo.done}/{dayInfo.required}
+                    {(() => {
+                      const movedCount = dayInstances.filter(i => i.moveCount > 0).length;
+                      return movedCount > 0 ? ` +${movedCount} перенесено` : '';
+                    })()}
                   </div>
                 )}
                 <div style={{ fontSize: '0.7rem' }}>
