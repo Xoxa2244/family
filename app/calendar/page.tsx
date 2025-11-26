@@ -260,21 +260,19 @@ export default function CalendarPage() {
 
               // С 26 ноября - показываем реальные данные
               // Разделяем инстансы на обычные (в рамках квоты) и перенесенные (сверх квоты)
-              // Перенесенные - это те, которые были перенесены с предыдущего дня (moveCount > 0 и status = 'pending')
-              // Инстансы со статусом 'moved' не показываем - они уже перенесены
+              // Обычные: done, pending (moveCount = 0), moved (показываются в слотах по квоте)
+              // Перенесенные: pending с moveCount > 0 (перенесены с предыдущего дня, показываются сверх квоты)
               const regularInstances: typeof dayInstances = [];
               const movedInstances: typeof dayInstances = [];
               
               dayInstances.forEach(instance => {
-                // Инстансы со статусом 'moved' не показываем - они уже перенесены
-                if (instance.status === 'moved') {
-                  return; // Пропускаем
-                }
                 // Перенесенные задачи - это pending с moveCount > 0 (перенесены с предыдущего дня)
+                // Они показываются сверх квоты
                 if (instance.status === 'pending' && instance.moveCount > 0) {
                   movedInstances.push(instance);
                 } else {
-                  // Обычные задачи: done или pending с moveCount = 0
+                  // Обычные задачи: done, pending (moveCount = 0), moved
+                  // Показываются в слотах по квоте
                   regularInstances.push(instance);
                 }
               });
@@ -398,7 +396,8 @@ export default function CalendarPage() {
                       <>
                         {dayInfo.done}/{dayInfo.required}
                         {(() => {
-                          const movedCount = dayInstances.filter(i => i.moveCount > 0).length;
+                          // Считаем перенесенные задачи (pending с moveCount > 0)
+                          const movedCount = dayInstances.filter(i => i.status === 'pending' && i.moveCount > 0).length;
                           return movedCount > 0 ? ` +${movedCount} перенесено` : '';
                         })()}
                       </>
