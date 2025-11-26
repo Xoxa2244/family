@@ -11,6 +11,7 @@ export default function TodayPage() {
   const { state, updateState } = useAppState();
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ instanceId: string; condition: string } | null>(null);
 
   const currentUser = state.users.find(u => u.id === state.currentUserId);
   const today = dayjs().format('YYYY-MM-DD');
@@ -71,15 +72,32 @@ export default function TodayPage() {
     setSelectedTemplateId('');
   };
 
-  const handleMarkDone = (instanceId: string) => {
-    updateState(prev => ({
-      ...prev,
-      taskInstances: prev.taskInstances.map(t =>
-        t.id === instanceId ? { ...t, status: 'done' as TaskStatus } : t
-      ),
-    }));
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
+  const handleMarkDoneClick = (instanceId: string) => {
+    const instance = state.taskInstances.find(t => t.id === instanceId);
+    if (!instance) return;
+    
+    const template = state.taskTemplates.find(t => t.id === instance.templateId);
+    const condition = template?.condition || '';
+    
+    setConfirmModal({ instanceId, condition });
+  };
+
+  const handleConfirmDone = (confirmed: boolean) => {
+    if (!confirmModal) return;
+    
+    if (confirmed) {
+      // Пользователь подтвердил выполнение
+      updateState(prev => ({
+        ...prev,
+        taskInstances: prev.taskInstances.map(t =>
+          t.id === confirmModal.instanceId ? { ...t, status: 'done' as TaskStatus } : t
+        ),
+      }));
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 2000);
+    }
+    // Если не подтвердил - просто закрываем модальное окно, статус не меняем
+    setConfirmModal(null);
   };
 
   const handleMoveToTomorrow = (instance: TaskInstance) => {
@@ -242,7 +260,7 @@ export default function TodayPage() {
                   {!isDone && !isMoved && (
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
-                        onClick={() => handleMarkDone(instance.id)}
+                        onClick={() => handleMarkDoneClick(instance.id)}
                         style={{
                           padding: '0.5rem 1rem',
                           background: '#10b981',
@@ -289,6 +307,75 @@ export default function TodayPage() {
         </div>
       )}
 
+      {/* Модальное окно подтверждения */}
+      {confirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}
+        onClick={() => setConfirmModal(null)}
+        >
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', color: '#333' }}>
+              {confirmModal.condition 
+                ? `Условие "${confirmModal.condition}" выполнено?`
+                : 'Дело выполнено?'
+              }
+            </h2>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => handleConfirmDone(true)}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Да!
+              </button>
+              <button
+                onClick={() => handleConfirmDone(false)}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Не совсем. Еще поделаю
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast уведомление */}
       {showToast && (
         <div style={{
@@ -304,7 +391,7 @@ export default function TodayPage() {
           fontWeight: 'bold',
           zIndex: 1000
         }}>
-          Я молодец! 🎉
+          Ты молодец! 🎉
         </div>
       )}
     </div>

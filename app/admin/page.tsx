@@ -165,7 +165,7 @@ export default function AdminPage() {
 function TasksTab() {
   const { state, updateState } = useAppState();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newTask, setNewTask] = useState({ title: '', description: '', assignedUserIds: [] as string[] });
+  const [newTask, setNewTask] = useState({ title: '', condition: '', assignedUserIds: [] as string[] });
   const [showAddForm, setShowAddForm] = useState(false);
 
   const handleSaveTask = (taskId: string, updates: Partial<TaskTemplate>) => {
@@ -184,7 +184,7 @@ function TasksTab() {
     const newTemplate: TaskTemplate = {
       id: crypto.randomUUID(),
       title: newTask.title,
-      description: newTask.description,
+      condition: newTask.condition,
       active: true,
       assignedUserIds: newTask.assignedUserIds,
     };
@@ -194,7 +194,7 @@ function TasksTab() {
       taskTemplates: [...prev.taskTemplates, newTemplate],
     }));
 
-    setNewTask({ title: '', description: '', assignedUserIds: [] });
+    setNewTask({ title: '', condition: '', assignedUserIds: [] });
     setShowAddForm(false);
   };
 
@@ -266,10 +266,10 @@ function TasksTab() {
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Описание</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Условие</label>
             <textarea
-              value={newTask.description}
-              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+              value={newTask.condition}
+              onChange={(e) => setNewTask({ ...newTask, condition: e.target.value })}
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -328,7 +328,7 @@ function TasksTab() {
           <thead>
             <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Название</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Описание</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Условие</th>
               <th style={{ padding: '0.75rem', textAlign: 'left' }}>Кому доступно</th>
               <th style={{ padding: '0.75rem', textAlign: 'center' }}>Активно</th>
               <th style={{ padding: '0.75rem', textAlign: 'center' }}>Действия</th>
@@ -357,8 +357,8 @@ function TasksTab() {
                 <td style={{ padding: '0.75rem' }}>
                   {editingId === task.id ? (
                     <textarea
-                      defaultValue={task.description}
-                      onBlur={(e) => handleSaveTask(task.id, { description: e.target.value })}
+                      defaultValue={task.condition}
+                      onBlur={(e) => handleSaveTask(task.id, { condition: e.target.value })}
                       style={{
                         width: '100%',
                         padding: '0.5rem',
@@ -368,7 +368,7 @@ function TasksTab() {
                       }}
                     />
                   ) : (
-                    <span>{task.description || '-'}</span>
+                    <span>{task.condition || '-'}</span>
                   )}
                 </td>
                 <td style={{ padding: '0.75rem' }}>

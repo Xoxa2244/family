@@ -12,7 +12,7 @@ export interface User {
 export interface TaskTemplate {
   id: string;
   title: string;        // "Английский", "Физкультура"
-  description?: string;
+  condition?: string;   // Условие выполнения дела
   active: boolean;
   assignedUserIds: string[]; // кому доступно это дело
 }
