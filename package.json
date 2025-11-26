@@ -9,10 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.85.0",
+    "dayjs": "^1.11.10",
     "next": "^14.2.0",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "dayjs": "^1.11.10"
+    "react-dom": "^18.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

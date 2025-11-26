@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppState } from '@/lib/stateContext';
 import { TaskTemplate, DailyQuota } from '@/types';
+import * as dbService from '@/lib/dbService';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -163,22 +164,28 @@ export default function AdminPage() {
 
 // Вкладка "Справочник дел"
 function TasksTab() {
-  const { state, updateState } = useAppState();
+  const { state, updateState, refreshState } = useAppState();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newTask, setNewTask] = useState({ title: '', condition: '', assignedUserIds: [] as string[] });
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const handleSaveTask = (taskId: string, updates: Partial<TaskTemplate>) => {
-    updateState(prev => ({
-      ...prev,
-      taskTemplates: prev.taskTemplates.map(t =>
-        t.id === taskId ? { ...t, ...updates } : t
-      ),
-    }));
-    setEditingId(null);
+  const handleSaveTask = async (taskId: string, updates: Partial<TaskTemplate>) => {
+    try {
+      await dbService.updateTaskTemplate(taskId, updates);
+      updateState(prev => ({
+        ...prev,
+        taskTemplates: prev.taskTemplates.map(t =>
+          t.id === taskId ? { ...t, ...updates } : t
+        ),
+      }));
+      setEditingId(null);
+    } catch (error) {
+      console.error('Failed to save task:', error);
+      alert('Ошибка при сохранении дела');
+    }
   };
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     if (!newTask.title.trim()) return;
 
     const newTemplate: TaskTemplate = {
@@ -189,38 +196,59 @@ function TasksTab() {
       assignedUserIds: newTask.assignedUserIds,
     };
 
-    updateState(prev => ({
-      ...prev,
-      taskTemplates: [...prev.taskTemplates, newTemplate],
-    }));
-
-    setNewTask({ title: '', condition: '', assignedUserIds: [] });
-    setShowAddForm(false);
+    try {
+      await dbService.createTaskTemplate(newTemplate);
+      updateState(prev => ({
+        ...prev,
+        taskTemplates: [...prev.taskTemplates, newTemplate],
+      }));
+      setNewTask({ title: '', condition: '', assignedUserIds: [] });
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Failed to add task:', error);
+      alert('Ошибка при добавлении дела');
+    }
   };
 
-  const handleToggleUser = (taskId: string, userId: string) => {
-    updateState(prev => ({
-      ...prev,
-      taskTemplates: prev.taskTemplates.map(t => {
-        if (t.id !== taskId) return t;
-        const hasUser = t.assignedUserIds.includes(userId);
-        return {
-          ...t,
-          assignedUserIds: hasUser
-            ? t.assignedUserIds.filter(id => id !== userId)
-            : [...t.assignedUserIds, userId],
-        };
-      }),
-    }));
+  const handleToggleUser = async (taskId: string, userId: string) => {
+    const task = state.taskTemplates.find(t => t.id === taskId);
+    if (!task) return;
+
+    const hasUser = task.assignedUserIds.includes(userId);
+    const newAssignedUserIds = hasUser
+      ? task.assignedUserIds.filter(id => id !== userId)
+      : [...task.assignedUserIds, userId];
+
+    try {
+      await dbService.updateTaskTemplate(taskId, { assignedUserIds: newAssignedUserIds });
+      updateState(prev => ({
+        ...prev,
+        taskTemplates: prev.taskTemplates.map(t =>
+          t.id === taskId ? { ...t, assignedUserIds: newAssignedUserIds } : t
+        ),
+      }));
+    } catch (error) {
+      console.error('Failed to toggle user:', error);
+      alert('Ошибка при обновлении назначения');
+    }
   };
 
-  const handleToggleActive = (taskId: string) => {
-    updateState(prev => ({
-      ...prev,
-      taskTemplates: prev.taskTemplates.map(t =>
-        t.id === taskId ? { ...t, active: !t.active } : t
-      ),
-    }));
+  const handleToggleActive = async (taskId: string) => {
+    const task = state.taskTemplates.find(t => t.id === taskId);
+    if (!task) return;
+
+    try {
+      await dbService.updateTaskTemplate(taskId, { active: !task.active });
+      updateState(prev => ({
+        ...prev,
+        taskTemplates: prev.taskTemplates.map(t =>
+          t.id === taskId ? { ...t, active: !t.active } : t
+        ),
+      }));
+    } catch (error) {
+      console.error('Failed to toggle active:', error);
+      alert('Ошибка при обновлении статуса');
+    }
   };
 
   return (
@@ -431,30 +459,38 @@ function QuotasTab() {
   const { state, updateState } = useAppState();
   const weekDays = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 
-  const handleQuotaChange = (userId: string, weekday: number, value: number) => {
+  const handleQuotaChange = async (userId: string, weekday: number, value: number) => {
     const numValue = Math.max(0, Math.min(3, parseInt(String(value)) || 0));
     
-    updateState(prev => {
-      const existing = prev.dailyQuotas.find(
-        q => q.userId === userId && q.weekday === weekday
-      );
+    const quota: DailyQuota = { userId, weekday, tasksRequired: numValue };
+    
+    try {
+      await dbService.upsertDailyQuota(quota);
+      updateState(prev => {
+        const existing = prev.dailyQuotas.find(
+          q => q.userId === userId && q.weekday === weekday
+        );
 
-      if (existing) {
-        return {
-          ...prev,
-          dailyQuotas: prev.dailyQuotas.map(q =>
-            q.userId === userId && q.weekday === weekday
-              ? { ...q, tasksRequired: numValue }
-              : q
-          ),
-        };
-      } else {
-        return {
-          ...prev,
-          dailyQuotas: [...prev.dailyQuotas, { userId, weekday, tasksRequired: numValue }],
-        };
-      }
-    });
+        if (existing) {
+          return {
+            ...prev,
+            dailyQuotas: prev.dailyQuotas.map(q =>
+              q.userId === userId && q.weekday === weekday
+                ? { ...q, tasksRequired: numValue }
+                : q
+            ),
+          };
+        } else {
+          return {
+            ...prev,
+            dailyQuotas: [...prev.dailyQuotas, quota],
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Failed to save quota:', error);
+      alert('Ошибка при сохранении квоты');
+    }
   };
 
   const getQuota = (userId: string, weekday: number): number => {
