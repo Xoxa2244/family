@@ -380,16 +380,19 @@ export default function TodayPage() {
       {showToast && (
         <div style={{
           position: 'fixed',
-          bottom: '2rem',
-          right: '2rem',
-          padding: '1rem 2rem',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          padding: '2rem 4rem',
           background: '#10b981',
           color: 'white',
-          borderRadius: '8px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          fontSize: '1.1rem',
+          borderRadius: '16px',
+          boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+          fontSize: '2.5rem',
           fontWeight: 'bold',
-          zIndex: 1000
+          zIndex: 2000,
+          textAlign: 'center',
+          animation: 'fadeIn 0.3s ease-in'
         }}>
           Ты молодец! 🎉
         </div>
