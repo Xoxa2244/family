@@ -140,6 +140,20 @@ export default function TodayPage() {
     setMoveModal(null);
   };
 
+  const handleResetDay = () => {
+    if (!confirm('Вы уверены, что хотите сбросить все дела на сегодня? Все данные будут удалены.')) {
+      return;
+    }
+
+    // Удаляем все инстансы задач на сегодня для текущего пользователя
+    updateState(prev => ({
+      ...prev,
+      taskInstances: prev.taskInstances.filter(
+        t => !(t.userId === currentUser.id && t.date === today)
+      ),
+    }));
+  };
+
   const getTaskTitle = (templateId: string) => {
     return state.taskTemplates.find(t => t.id === templateId)?.title || 'Неизвестное дело';
   };
@@ -474,6 +488,39 @@ export default function TodayPage() {
           animation: 'fadeIn 0.3s ease-in'
         }}>
           Ты молодец! 🎉
+        </div>
+      )}
+
+      {/* Кнопка сброса дня (только для родителя) */}
+      {currentUser.role === 'parent' && (
+        <div style={{
+          marginTop: '3rem',
+          paddingTop: '2rem',
+          borderTop: '1px solid #e5e7eb',
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={handleResetDay}
+            style={{
+              padding: '0.5rem 1rem',
+              background: 'transparent',
+              color: '#6b7280',
+              border: '1px solid #d1d5db',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 'normal'
+            }}
+          >
+            Сбросить день
+          </button>
+          <div style={{
+            marginTop: '0.25rem',
+            fontSize: '0.75rem',
+            color: '#9ca3af'
+          }}>
+            Делает только папа
+          </div>
         </div>
       )}
     </div>
