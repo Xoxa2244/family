@@ -38,6 +38,7 @@ export default function CalendarPage() {
   const startDay = monthStart.day();
 
   // Получить все инстансы для выбранного пользователя в этом месяце
+  // Включаем все инстансы, которые были созданы в этом месяце или перенесены сюда
   const monthInstances = state.taskInstances.filter(instance => {
     if (instance.userId !== selectedUserId) return false;
     const instanceDate = dayjs(instance.date);
@@ -231,8 +232,17 @@ export default function CalendarPage() {
               }
 
               const slots = [];
+              // Сортируем инстансы: сначала выполненные, потом pending, потом moved
+              const sortedInstances = [...dayInstances].sort((a, b) => {
+                if (a.status === 'done' && b.status !== 'done') return -1;
+                if (a.status !== 'done' && b.status === 'done') return 1;
+                if (a.status === 'pending' && b.status === 'moved') return -1;
+                if (a.status === 'moved' && b.status === 'pending') return 1;
+                return 0;
+              });
+
               for (let i = 0; i < dayInfo.required; i++) {
-                const instance = dayInstances[i];
+                const instance = sortedInstances[i];
                 let slotStatus: 'done' | 'pending' | 'moved' | 'empty' | 'failed' = 'empty';
                 let taskTitle = '';
 
@@ -259,7 +269,7 @@ export default function CalendarPage() {
                       background: isDone ? '#dcfce7' :
                         isFailed ? '#fee2e2' :
                         isMoved ? '#fef3c7' :
-                        isEmpty ? '#f3f4f6' : '#f3f4f6',
+                        '#f3f4f6',
                       borderRadius: '2px',
                       fontSize: '0.7rem',
                       display: 'flex',
@@ -271,9 +281,9 @@ export default function CalendarPage() {
                     {taskTitle && <span>{taskTitle}:</span>}
                     {isDone && <span>✅</span>}
                     {isFailed && <span style={{ color: '#ef4444', fontWeight: 'bold' }}>❌</span>}
-                    {isMoved && <span>⏭️</span>}
+                    {isMoved && <span>➡️</span>}
                     {isPending && <span>⏳</span>}
-                    {isEmpty && !dayInfo.isPast && <span style={{ color: '#666' }}>❓</span>}
+                    {isEmpty && <span style={{ color: '#666' }}>❓</span>}
                   </div>
                 );
               }
