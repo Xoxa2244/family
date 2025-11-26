@@ -8,8 +8,8 @@ import { useAppState } from '@/lib/stateContext';
 
 dayjs.locale('ru');
 
-// Дата начала истории - 27 ноября 2024
-const HISTORY_START_DATE = dayjs('2024-11-27');
+// Дата начала истории - 26 ноября 2024
+const HISTORY_START_DATE = dayjs('2024-11-26');
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -227,20 +227,43 @@ export default function CalendarPage() {
 
             // Рендерим слоты для задач
             const renderSlots = () => {
-              if (dayInfo.isBeforeHistory) {
-                return null;
-              }
-
               const slots = [];
               
+              // До начала истории - показываем только серые плашки без данных
+              if (dayInfo.isBeforeHistory) {
+                if (dayInfo.required === 0) {
+                  return null;
+                }
+                // Показываем серые плашки с вопросиками
+                for (let i = 0; i < dayInfo.required; i++) {
+                  slots.push(
+                    <div
+                      key={`slot-${i}`}
+                      style={{
+                        marginBottom: '0.25rem',
+                        padding: '0.25rem',
+                        background: '#f3f4f6',
+                        borderRadius: '2px',
+                        fontSize: '0.7rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        opacity: 0.5
+                      }}
+                    >
+                      <span style={{ color: '#666' }}>❓</span>
+                    </div>
+                  );
+                }
+                return slots;
+              }
+
+              // С 26 ноября - показываем реальные данные
               // Разделяем инстансы на обычные (в рамках квоты) и перенесенные (сверх квоты)
-              // Перенесенные - это те, у которых moveCount > 0 (они были перенесены с предыдущего дня)
               const regularInstances: typeof dayInstances = [];
               const movedInstances: typeof dayInstances = [];
               
               dayInstances.forEach(instance => {
-                // Если инстанс имеет moveCount > 0, это перенесенная задача (сверх квоты)
-                // Остальные - обычные задачи (в рамках квоты)
                 if (instance.moveCount > 0) {
                   movedInstances.push(instance);
                 } else {
@@ -257,7 +280,7 @@ export default function CalendarPage() {
                 return 0;
               });
 
-              // Рендерим слоты по квоте
+              // Рендерим слоты по квоте (с 26 ноября всегда показываем слоты)
               for (let i = 0; i < dayInfo.required; i++) {
                 const instance = sortedRegularInstances[i];
                 let slotStatus: 'done' | 'pending' | 'moved' | 'empty' | 'failed' = 'empty';
@@ -267,7 +290,7 @@ export default function CalendarPage() {
                   slotStatus = instance.status;
                   taskTitle = getTaskTitle(instance.templateId);
                 } else if (dayInfo.isPast) {
-                  // Если день прошел и слот не заполнен - красный крестик
+                  // Если день прошел и слот не заполнен - красный крестик (только с 26 ноября)
                   slotStatus = 'failed';
                 }
 
@@ -292,8 +315,7 @@ export default function CalendarPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.25rem',
-                      border: isFailed ? '1px solid #ef4444' : 'none',
-                      opacity: dayInfo.isBeforeHistory ? 0.5 : 1
+                      border: isFailed ? '1px solid #ef4444' : 'none'
                     }}
                   >
                     {taskTitle && <span>{taskTitle}:</span>}
@@ -356,17 +378,23 @@ export default function CalendarPage() {
                 }}>
                   {day}
                 </div>
-                {!dayInfo.isBeforeHistory && dayInfo.required > 0 && (
+                {dayInfo.required > 0 && (
                   <div style={{ 
                     fontSize: '0.75rem', 
                     marginBottom: '0.5rem', 
-                    color: '#666' 
+                    color: dayInfo.isBeforeHistory ? '#999' : '#666' 
                   }}>
-                    {dayInfo.done}/{dayInfo.required}
-                    {(() => {
-                      const movedCount = dayInstances.filter(i => i.moveCount > 0).length;
-                      return movedCount > 0 ? ` +${movedCount} перенесено` : '';
-                    })()}
+                    {dayInfo.isBeforeHistory ? (
+                      '0/0'
+                    ) : (
+                      <>
+                        {dayInfo.done}/{dayInfo.required}
+                        {(() => {
+                          const movedCount = dayInstances.filter(i => i.moveCount > 0).length;
+                          return movedCount > 0 ? ` +${movedCount} перенесено` : '';
+                        })()}
+                      </>
+                    )}
                   </div>
                 )}
                 <div style={{ fontSize: '0.7rem' }}>
