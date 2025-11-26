@@ -111,16 +111,6 @@ export default function TodayPage() {
     if (confirmed) {
       const instance = moveModal.instance;
       
-      // Обновляем текущий инстанс
-      updateState(prev => ({
-        ...prev,
-        taskInstances: prev.taskInstances.map(t =>
-          t.id === instance.id
-            ? { ...t, status: 'moved' as TaskStatus, moveCount: t.moveCount + 1 }
-            : t
-        ),
-      }));
-
       // Создаём новый инстанс на завтра
       const newInstance: TaskInstance = {
         id: crypto.randomUUID(),
@@ -131,9 +121,17 @@ export default function TodayPage() {
         moveCount: instance.moveCount,
       };
 
+      // Обновляем текущий инстанс и добавляем новый в одном обновлении
       updateState(prev => ({
         ...prev,
-        taskInstances: [...prev.taskInstances, newInstance],
+        taskInstances: [
+          ...prev.taskInstances.map(t =>
+            t.id === instance.id
+              ? { ...t, status: 'moved' as TaskStatus, moveCount: t.moveCount + 1 }
+              : t
+          ),
+          newInstance,
+        ],
       }));
     }
     
