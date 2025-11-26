@@ -227,7 +227,7 @@ export default function CalendarPage() {
 
             // Рендерим слоты для задач
             const renderSlots = () => {
-              if (dayInfo.isBeforeHistory || dayInfo.required === 0) {
+              if (dayInfo.required === 0) {
                 return null;
               }
 
@@ -249,8 +249,8 @@ export default function CalendarPage() {
                 if (instance) {
                   slotStatus = instance.status;
                   taskTitle = getTaskTitle(instance.templateId);
-                } else if (dayInfo.isPast) {
-                  // Если день прошел и слот не заполнен - красный крестик
+                } else if (dayInfo.isPast && !dayInfo.isBeforeHistory) {
+                  // Если день прошел и слот не заполнен И это после начала истории - красный крестик
                   slotStatus = 'failed';
                 }
 
@@ -275,7 +275,8 @@ export default function CalendarPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.25rem',
-                      border: isFailed ? '1px solid #ef4444' : 'none'
+                      border: isFailed ? '1px solid #ef4444' : 'none',
+                      opacity: dayInfo.isBeforeHistory ? 0.5 : 1
                     }}
                   >
                     {taskTitle && <span>{taskTitle}:</span>}
@@ -298,19 +299,24 @@ export default function CalendarPage() {
                   border: '1px solid #e5e7eb',
                   borderRadius: '4px',
                   padding: '0.5rem',
-                  background: 'white',
-                  position: 'relative'
+                  background: dayInfo.isBeforeHistory ? '#f9fafb' : 'white',
+                  position: 'relative',
+                  opacity: dayInfo.isBeforeHistory ? 0.7 : 1
                 }}
               >
                 <div style={{
                   fontWeight: 'bold',
                   marginBottom: '0.25rem',
-                  color: '#666'
+                  color: dayInfo.isBeforeHistory ? '#999' : '#666'
                 }}>
                   {day}
                 </div>
-                {!dayInfo.isBeforeHistory && dayInfo.required > 0 && (
-                  <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem', color: '#666' }}>
+                {dayInfo.required > 0 && (
+                  <div style={{ 
+                    fontSize: '0.75rem', 
+                    marginBottom: '0.5rem', 
+                    color: dayInfo.isBeforeHistory ? '#999' : '#666' 
+                  }}>
                     {dayInfo.done}/{dayInfo.required}
                   </div>
                 )}
