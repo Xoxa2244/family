@@ -13,6 +13,8 @@ export default function TodayPage() {
   const [showToast, setShowToast] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{ instanceId: string; condition: string } | null>(null);
   const [moveModal, setMoveModal] = useState<{ instance: TaskInstance } | null>(null);
+  const [resetPasswordModal, setResetPasswordModal] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
 
   const currentUser = state.users.find(u => u.id === state.currentUserId);
   const today = dayjs().format('YYYY-MM-DD');
@@ -143,7 +145,17 @@ export default function TodayPage() {
     setMoveModal(null);
   };
 
-  const handleResetDay = () => {
+  const handleResetDayClick = () => {
+    setResetPasswordModal(true);
+    setResetPassword('');
+  };
+
+  const handleResetDayConfirm = () => {
+    if (resetPassword !== '1234') {
+      alert('Неверный пароль');
+      return;
+    }
+
     if (!confirm('Вы уверены, что хотите сбросить все дела на сегодня? Все данные будут удалены.')) {
       return;
     }
@@ -155,6 +167,9 @@ export default function TodayPage() {
         t => !(t.userId === currentUser.id && t.date === today)
       ),
     }));
+
+    setResetPasswordModal(false);
+    setResetPassword('');
   };
 
   const getTaskTitle = (templateId: string) => {
@@ -494,35 +509,123 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* Кнопка сброса дня (только для родителя) */}
-      {currentUser.role === 'parent' && (
+      {/* Кнопка сброса дня */}
+      <div style={{
+        marginTop: '3rem',
+        paddingTop: '2rem',
+        borderTop: '1px solid #e5e7eb',
+        textAlign: 'center'
+      }}>
+        <button
+          onClick={handleResetDayClick}
+          style={{
+            padding: '0.5rem 1rem',
+            background: 'transparent',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            fontWeight: 'normal'
+          }}
+        >
+          Сбросить день
+        </button>
         <div style={{
-          marginTop: '3rem',
-          paddingTop: '2rem',
-          borderTop: '1px solid #e5e7eb',
-          textAlign: 'center'
+          marginTop: '0.25rem',
+          fontSize: '0.75rem',
+          color: '#9ca3af'
         }}>
-          <button
-            onClick={handleResetDay}
-            style={{
-              padding: '0.5rem 1rem',
-              background: 'transparent',
-              color: '#6b7280',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 'normal'
-            }}
-          >
-            Сбросить день
-          </button>
+          Делает только папа
+        </div>
+      </div>
+
+      {/* Модальное окно для пароля сброса дня */}
+      {resetPasswordModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}
+        onClick={() => setResetPasswordModal(false)}
+        >
           <div style={{
-            marginTop: '0.25rem',
-            fontSize: '0.75rem',
-            color: '#9ca3af'
-          }}>
-            Делает только папа
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', color: '#333' }}>
+              Введите пароль для сброса дня
+            </h2>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input
+                type="password"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                placeholder="Пароль"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '1rem'
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleResetDayConfirm();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={handleResetDayConfirm}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Сбросить
+              </button>
+              <button
+                onClick={() => {
+                  setResetPasswordModal(false);
+                  setResetPassword('');
+                }}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}
