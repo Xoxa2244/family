@@ -247,6 +247,15 @@ export async function updateTaskInstance(instanceId: string, updates: Partial<Ta
   if (error) throw error;
 }
 
+export async function deleteAllTaskInstances(): Promise<void> {
+  const { error } = await supabase
+    .from('task_instances')
+    .delete()
+    .neq('id', ''); // Удаляем все записи
+
+  if (error) throw error;
+}
+
 // ========== App State ==========
 export async function getCurrentUserId(): Promise<string | undefined> {
   const { data, error } = await supabase

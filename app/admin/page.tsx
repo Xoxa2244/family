@@ -174,7 +174,176 @@ export default function AdminPage() {
       {activeTab === 'users' && <UsersTab />}
       {activeTab === 'tasks' && <TasksTab />}
       {activeTab === 'quotas' && <QuotasTab />}
+
+      {/* Кнопка очистки всех задач (для тестирования) */}
+      <div style={{
+        marginTop: '3rem',
+        paddingTop: '2rem',
+        borderTop: '1px solid #e5e7eb',
+        textAlign: 'center'
+      }}>
+        <ClearAllTasksButton />
+      </div>
     </div>
+  );
+}
+
+// Кнопка для очистки всех задач
+function ClearAllTasksButton() {
+  const { refreshState } = useAppState();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearClick = () => {
+    setShowPasswordModal(true);
+    setPassword('');
+  };
+
+  const handleClearConfirm = async () => {
+    if (password !== '1234') {
+      alert('Неверный пароль');
+      return;
+    }
+
+    if (!confirm('ВНИМАНИЕ! Это удалит ВСЕ задачи по всем пользователям и дням. Продолжить?')) {
+      return;
+    }
+
+    setIsClearing(true);
+    try {
+      await dbService.deleteAllTaskInstances();
+      await refreshState(); // Обновляем состояние
+      alert('✅ Все задачи успешно удалены!');
+      setShowPasswordModal(false);
+      setPassword('');
+    } catch (error) {
+      console.error('Ошибка при удалении задач:', error);
+      alert('Ошибка при удалении задач');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        onClick={handleClearClick}
+        disabled={isClearing}
+        style={{
+          padding: '0.5rem 1rem',
+          background: isClearing ? '#ccc' : 'transparent',
+          color: '#ef4444',
+          border: '1px solid #ef4444',
+          borderRadius: '4px',
+          cursor: isClearing ? 'not-allowed' : 'pointer',
+          fontSize: '0.875rem',
+          fontWeight: 'normal'
+        }}
+      >
+        {isClearing ? 'Удаление...' : 'Очистить все задачи'}
+      </button>
+      <div style={{
+        marginTop: '0.25rem',
+        fontSize: '0.75rem',
+        color: '#9ca3af'
+      }}>
+        Для тестирования (пароль: 1234)
+      </div>
+
+      {/* Модальное окно для пароля */}
+      {showPasswordModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}
+        onClick={() => !isClearing && setShowPasswordModal(false)}
+        >
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', color: '#333' }}>
+              Введите пароль
+            </h2>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Пароль"
+                disabled={isClearing}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '1rem'
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isClearing) {
+                    handleClearConfirm();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={handleClearConfirm}
+                disabled={isClearing}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: isClearing ? '#ccc' : '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isClearing ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                {isClearing ? 'Удаление...' : 'Удалить все'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword('');
+                }}
+                disabled={isClearing}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: isClearing ? '#ccc' : '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isClearing ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '1rem'
+                }}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
