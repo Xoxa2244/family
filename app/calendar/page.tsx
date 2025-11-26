@@ -260,13 +260,21 @@ export default function CalendarPage() {
 
               // С 26 ноября - показываем реальные данные
               // Разделяем инстансы на обычные (в рамках квоты) и перенесенные (сверх квоты)
+              // Перенесенные - это те, которые были перенесены с предыдущего дня (moveCount > 0 и status = 'pending')
+              // Инстансы со статусом 'moved' не показываем - они уже перенесены
               const regularInstances: typeof dayInstances = [];
               const movedInstances: typeof dayInstances = [];
               
               dayInstances.forEach(instance => {
-                if (instance.moveCount > 0) {
+                // Инстансы со статусом 'moved' не показываем - они уже перенесены
+                if (instance.status === 'moved') {
+                  return; // Пропускаем
+                }
+                // Перенесенные задачи - это pending с moveCount > 0 (перенесены с предыдущего дня)
+                if (instance.status === 'pending' && instance.moveCount > 0) {
                   movedInstances.push(instance);
                 } else {
+                  // Обычные задачи: done или pending с moveCount = 0
                   regularInstances.push(instance);
                 }
               });
