@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppState } from '@/lib/stateContext';
-import { TaskTemplate, DailyQuota } from '@/types';
+import { User, TaskTemplate, DailyQuota } from '@/types';
 import * as dbService from '@/lib/dbService';
 
 export default function AdminPage() {
   const router = useRouter();
   const { state, updateState } = useAppState();
-  const [activeTab, setActiveTab] = useState<'tasks' | 'quotas'>('tasks');
+  const [activeTab, setActiveTab] = useState<'users' | 'tasks' | 'quotas'>('users');
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -124,6 +124,21 @@ export default function AdminPage() {
         borderBottom: '2px solid #e5e7eb'
       }}>
         <button
+          onClick={() => setActiveTab('users')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: activeTab === 'users' ? '#667eea' : 'transparent',
+            color: activeTab === 'users' ? 'white' : '#666',
+            border: 'none',
+            borderBottom: activeTab === 'users' ? '2px solid #667eea' : '2px solid transparent',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'users' ? 'bold' : 'normal',
+            marginBottom: '-2px'
+          }}
+        >
+          Пользователи
+        </button>
+        <button
           onClick={() => setActiveTab('tasks')}
           style={{
             padding: '0.75rem 1.5rem',
@@ -156,8 +171,290 @@ export default function AdminPage() {
       </div>
 
       {/* Контент вкладок */}
+      {activeTab === 'users' && <UsersTab />}
       {activeTab === 'tasks' && <TasksTab />}
       {activeTab === 'quotas' && <QuotasTab />}
+    </div>
+  );
+}
+
+// Вкладка "Пользователи"
+function UsersTab() {
+  const { state, updateState, refreshState } = useAppState();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState({ name: '', login: '', role: 'child' as 'parent' | 'child' });
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const handleSaveUser = async (userId: string, updates: Partial<User>) => {
+    try {
+      await dbService.updateUser(userId, updates);
+      updateState(prev => ({
+        ...prev,
+        users: prev.users.map(u =>
+          u.id === userId ? { ...u, ...updates } : u
+        ),
+      }));
+      setEditingId(null);
+    } catch (error) {
+      console.error('Failed to save user:', error);
+      alert('Ошибка при сохранении пользователя');
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!newUser.name.trim() || !newUser.login.trim()) {
+      alert('Заполните все поля');
+      return;
+    }
+
+    // Проверяем, что логин уникален
+    const existingUser = state.users.find(u => u.login.toLowerCase() === newUser.login.toLowerCase());
+    if (existingUser) {
+      alert('Пользователь с таким логином уже существует');
+      return;
+    }
+
+    const user: User = {
+      id: crypto.randomUUID(),
+      name: newUser.name,
+      login: newUser.login,
+      role: newUser.role,
+    };
+
+    try {
+      await dbService.createUser(user);
+      await refreshState(); // Перезагружаем состояние, чтобы получить обновлённый список
+      setNewUser({ name: '', login: '', role: 'child' });
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Failed to add user:', error);
+      alert('Ошибка при добавлении пользователя');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Вы уверены, что хотите удалить этого пользователя? Все его данные (дела, квоты) будут удалены.')) {
+      return;
+    }
+
+    try {
+      await dbService.deleteUser(userId);
+      await refreshState(); // Перезагружаем состояние
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert('Ошибка при удалении пользователя');
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          {showAddForm ? 'Отмена' : '+ Добавить пользователя'}
+        </button>
+      </div>
+
+      {showAddForm && (
+        <div style={{
+          background: 'white',
+          padding: '1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          marginBottom: '1.5rem'
+        }}>
+          <h3 style={{ marginBottom: '1rem' }}>Новый пользователь</h3>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Имя</label>
+            <input
+              type="text"
+              value={newUser.name}
+              onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
+              placeholder="Например: Роман"
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Логин</label>
+            <input
+              type="text"
+              value={newUser.login}
+              onChange={(e) => setNewUser({ ...newUser, login: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
+              placeholder="Например: Roman"
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Роль</label>
+            <select
+              value={newUser.role}
+              onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'parent' | 'child' })}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '4px'
+              }}
+            >
+              <option value="child">Ребёнок</option>
+              <option value="parent">Родитель</option>
+            </select>
+          </div>
+          <button
+            onClick={handleAddUser}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#667eea',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            Сохранить
+          </button>
+        </div>
+      )}
+
+      <div style={{
+        background: 'white',
+        padding: '1.5rem',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        overflowX: 'auto'
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Имя</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Логин</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left' }}>Роль</th>
+              <th style={{ padding: '0.75rem', textAlign: 'center' }}>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {state.users.map(user => (
+              <tr key={user.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <td style={{ padding: '0.75rem' }}>
+                  {editingId === user.id ? (
+                    <input
+                      type="text"
+                      defaultValue={user.name}
+                      onBlur={(e) => handleSaveUser(user.id, { name: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  ) : (
+                    <span style={{ fontWeight: 'bold' }}>{user.name}</span>
+                  )}
+                </td>
+                <td style={{ padding: '0.75rem' }}>
+                  {editingId === user.id ? (
+                    <input
+                      type="text"
+                      defaultValue={user.login}
+                      onBlur={(e) => handleSaveUser(user.id, { login: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  ) : (
+                    <span>{user.login}</span>
+                  )}
+                </td>
+                <td style={{ padding: '0.75rem' }}>
+                  {editingId === user.id ? (
+                    <select
+                      defaultValue={user.role}
+                      onChange={(e) => handleSaveUser(user.id, { role: e.target.value as 'parent' | 'child' })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <option value="child">Ребёнок</option>
+                      <option value="parent">Родитель</option>
+                    </select>
+                  ) : (
+                    <span style={{
+                      padding: '0.25rem 0.75rem',
+                      background: user.role === 'parent' ? '#667eea' : '#10b981',
+                      color: 'white',
+                      borderRadius: '4px',
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold'
+                    }}>
+                      {user.role === 'parent' ? 'Родитель' : 'Ребёнок'}
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                    <button
+                      onClick={() => setEditingId(editingId === user.id ? null : user.id)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      {editingId === user.id ? 'Сохранить' : 'Редактировать'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

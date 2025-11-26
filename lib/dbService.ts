@@ -32,6 +32,46 @@ export async function createUser(user: User): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateUser(userId: string, updates: Partial<User>): Promise<void> {
+  const updateData: any = {};
+  if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.login !== undefined) updateData.login = updates.login;
+  if (updates.role !== undefined) updateData.role = updates.role;
+
+  const { error } = await supabase
+    .from('users')
+    .update(updateData)
+    .eq('id', userId);
+
+  if (error) throw error;
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  // Сначала удаляем связанные данные
+  await supabase
+    .from('task_template_assignments')
+    .delete()
+    .eq('user_id', userId);
+
+  await supabase
+    .from('daily_quotas')
+    .delete()
+    .eq('user_id', userId);
+
+  await supabase
+    .from('task_instances')
+    .delete()
+    .eq('user_id', userId);
+
+  // Затем удаляем пользователя
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', userId);
+
+  if (error) throw error;
+}
+
 // ========== Task Templates ==========
 export async function getTaskTemplates(): Promise<TaskTemplate[]> {
   const { data: templates, error: templatesError } = await supabase
