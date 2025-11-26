@@ -8,6 +8,9 @@ import { useAppState } from '@/lib/stateContext';
 
 dayjs.locale('ru');
 
+// Дата начала истории - 27 ноября 2024
+const HISTORY_START_DATE = dayjs('2024-11-27');
+
 export default function CalendarPage() {
   const router = useRouter();
   const { state } = useAppState();
@@ -50,23 +53,40 @@ export default function CalendarPage() {
     return monthInstances.filter(i => i.date === dateStr);
   };
 
-  const getDayStatus = (day: number) => {
+  const getDayInfo = (day: number) => {
     const date = monthStart.add(day - 1, 'day');
     const weekday = date.day();
     const quota = userQuotas.find(q => q.weekday === weekday);
     const tasksRequired = quota?.tasksRequired ?? 0;
+    const isBeforeHistory = date.isBefore(HISTORY_START_DATE, 'day');
+    const isToday = date.isSame(dayjs(), 'day');
+    const isPast = date.isBefore(dayjs(), 'day') && !isToday;
 
-    if (tasksRequired === 0) {
-      return { status: 'empty', required: 0, done: 0 };
+    // Если дата до начала истории - не показываем количество задач
+    if (isBeforeHistory || tasksRequired === 0) {
+      return { 
+        status: 'empty', 
+        required: 0, 
+        done: 0, 
+        isBeforeHistory,
+        isPast,
+        isToday 
+      };
     }
 
     const dayInstances = getDayInstances(day);
     const tasksDone = dayInstances.filter(i => i.status === 'done').length;
+    const tasksPending = dayInstances.filter(i => i.status === 'pending').length;
+    const tasksMoved = dayInstances.filter(i => i.status === 'moved').length;
 
     return {
-      status: tasksDone >= tasksRequired ? 'success' : 'fail',
       required: tasksRequired,
       done: tasksDone,
+      pending: tasksPending,
+      moved: tasksMoved,
+      isBeforeHistory: false,
+      isPast,
+      isToday,
     };
   };
 
@@ -201,8 +221,64 @@ export default function CalendarPage() {
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const dayInstances = getDayInstances(day);
-            const dayStatus = getDayStatus(day);
+            const dayInfo = getDayInfo(day);
             const date = monthStart.add(day - 1, 'day');
+
+            // Рендерим слоты для задач
+            const renderSlots = () => {
+              if (dayInfo.isBeforeHistory || dayInfo.required === 0) {
+                return null;
+              }
+
+              const slots = [];
+              for (let i = 0; i < dayInfo.required; i++) {
+                const instance = dayInstances[i];
+                let slotStatus: 'done' | 'pending' | 'moved' | 'empty' | 'failed' = 'empty';
+                let taskTitle = '';
+
+                if (instance) {
+                  slotStatus = instance.status;
+                  taskTitle = getTaskTitle(instance.templateId);
+                } else if (dayInfo.isPast) {
+                  // Если день прошел и слот не заполнен - красный крестик
+                  slotStatus = 'failed';
+                }
+
+                const isDone = slotStatus === 'done';
+                const isFailed = slotStatus === 'failed';
+                const isEmpty = slotStatus === 'empty';
+                const isPending = slotStatus === 'pending';
+                const isMoved = slotStatus === 'moved';
+
+                slots.push(
+                  <div
+                    key={i}
+                    style={{
+                      marginBottom: '0.25rem',
+                      padding: '0.25rem',
+                      background: isDone ? '#dcfce7' :
+                        isFailed ? '#fee2e2' :
+                        isMoved ? '#fef3c7' :
+                        isEmpty ? '#f3f4f6' : '#f3f4f6',
+                      borderRadius: '2px',
+                      fontSize: '0.7rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      border: isFailed ? '1px solid #ef4444' : 'none'
+                    }}
+                  >
+                    {taskTitle && <span>{taskTitle}:</span>}
+                    {isDone && <span>✅</span>}
+                    {isFailed && <span style={{ color: '#ef4444', fontWeight: 'bold' }}>❌</span>}
+                    {isMoved && <span>⏭️</span>}
+                    {isPending && <span>⏳</span>}
+                    {isEmpty && !dayInfo.isPast && <span style={{ color: '#666' }}>❓</span>}
+                  </div>
+                );
+              }
+              return slots;
+            };
 
             return (
               <div
@@ -212,64 +288,25 @@ export default function CalendarPage() {
                   border: '1px solid #e5e7eb',
                   borderRadius: '4px',
                   padding: '0.5rem',
-                  background: dayStatus.status === 'success' ? '#f0fdf4' :
-                    dayStatus.status === 'fail' ? '#fef2f2' : 'white',
+                  background: 'white',
                   position: 'relative'
                 }}
               >
                 <div style={{
                   fontWeight: 'bold',
                   marginBottom: '0.25rem',
-                  color: dayStatus.status === 'success' ? '#10b981' :
-                    dayStatus.status === 'fail' ? '#ef4444' : '#666'
+                  color: '#666'
                 }}>
                   {day}
                 </div>
-                {dayStatus.status !== 'empty' && (
-                  <div style={{ fontSize: '0.75rem', marginBottom: '0.25rem', color: '#666' }}>
-                    {dayStatus.done}/{dayStatus.required}
+                {!dayInfo.isBeforeHistory && dayInfo.required > 0 && (
+                  <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem', color: '#666' }}>
+                    {dayInfo.done}/{dayInfo.required}
                   </div>
                 )}
                 <div style={{ fontSize: '0.7rem' }}>
-                  {dayInstances.map(instance => (
-                    <div
-                      key={instance.id}
-                      style={{
-                        marginBottom: '0.25rem',
-                        padding: '0.25rem',
-                        background: instance.status === 'done' ? '#dcfce7' :
-                          instance.status === 'moved' ? '#fef3c7' : '#f3f4f6',
-                        borderRadius: '2px',
-                        fontSize: '0.7rem'
-                      }}
-                    >
-                      {getTaskTitle(instance.templateId)}:{' '}
-                      {instance.status === 'done' && '✅'}
-                      {instance.status === 'moved' && '⏭️'}
-                      {instance.status === 'pending' && '⏳'}
-                    </div>
-                  ))}
+                  {renderSlots()}
                 </div>
-                {dayStatus.status === 'success' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '0.25rem',
-                    right: '0.25rem',
-                    fontSize: '1.2rem'
-                  }}>
-                    ✅
-                  </div>
-                )}
-                {dayStatus.status === 'fail' && dayStatus.required > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '0.25rem',
-                    right: '0.25rem',
-                    fontSize: '1.2rem'
-                  }}>
-                    ❌
-                  </div>
-                )}
               </div>
             );
           })}
